@@ -1,0 +1,12 @@
+
+> agnos-app@0.1.0 dev
+> node server.js
+
+> Ready on http://localhost:3000
+ GET /staff 200 in 596ms (compile: 328ms, render: 268ms)
+Client connected: wMiSHlMYHx7V68EYAAAC
+Client connected: uPEAZoc7n3ESPO3JAAAD
+ GET /patient 200 in 100ms (compile: 34ms, render: 66ms)
+Client connected: Ca0L1LQ5kDSZU9BBAAAG
+Client connected: 0XEHz85syHfEZyiaAAAH
+Terminated

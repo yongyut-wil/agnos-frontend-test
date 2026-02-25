@@ -1,0 +1,143 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSocket } from "@/hooks/useSocket";
+import { PatientData } from "@/types/patient";
+
+export default function PatientForm() {
+  const socket = useSocket();
+  const [formData, setFormData] = useState<PatientData>({
+    fullName: "",
+    dateOfBirth: "",
+    gender: "",
+  });
+
+  // Debounce emission of form data
+  useEffect(() => {
+    if (!socket) return;
+
+    const timeoutId = setTimeout(() => {
+      socket.emit("patient:update", formData);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [formData, socket]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleGenderSelect = (gender: string) => {
+    setFormData((prev) => ({ ...prev, gender }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Form submitted:", formData);
+    // Submit logic
+  };
+
+  return (
+    <div className="w-full max-w-2xl mx-auto py-12 px-6">
+      {/* Header Section */}
+      <section className="mb-10">
+        <h1 className="text-3xl font-bold text-agnos-dark mb-3">Personal Information</h1>
+        <p className="text-agnos-gray text-lg">
+          Please provide your details as they appear on your official identification documents.
+        </p>
+      </section>
+
+      {/* Form Section */}
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Full Name Field */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="fullName" className="font-bold text-agnos-dark">
+            Full Name
+          </label>
+          <input
+            type="text"
+            id="fullName"
+            name="fullName"
+            value={formData.fullName}
+            onChange={handleChange}
+            placeholder="e.g. John Doe"
+            className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg transition-all"
+            required
+          />
+        </div>
+
+        {/* Date of Birth Field */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="dateOfBirth" className="font-bold text-agnos-dark">
+            Date of Birth
+          </label>
+          <input
+            type="date"
+            id="dateOfBirth"
+            name="dateOfBirth"
+            value={formData.dateOfBirth}
+            onChange={handleChange}
+            className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg appearance-none bg-white transition-all"
+            required
+          />
+        </div>
+
+        {/* Gender Selection */}
+        <div className="flex flex-col gap-3">
+          <label className="font-bold text-agnos-dark">Gender</label>
+          <div className="flex flex-wrap md:flex-nowrap gap-4">
+            {["Male", "Female", "Other"].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleGenderSelect(option)}
+                className={`flex-1 py-3 px-4 border rounded-lg text-center font-medium transition-all duration-200 hover:bg-gray-50 text-lg
+                  ${
+                    formData.gender === option
+                      ? "border-agnos-blue ring-1 ring-agnos-blue text-agnos-blue bg-blue-50/10"
+                      : "border-agnos-border text-gray-600"
+                  }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* HIPAA Compliance Notice */}
+        <div className="flex items-start gap-3 pt-4 text-agnos-gray">
+          <div className="mt-1">
+            <svg
+              className="h-5 w-5 text-agnos-blue"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              ></path>
+            </svg>
+          </div>
+          <p className="text-sm leading-relaxed">
+            Your data is encrypted and handled according to medical privacy standards (HIPAA compliant).
+          </p>
+        </div>
+
+        {/* Submit Button (Sticky Footer simulation) */}
+        <div className="pt-6">
+            <button
+                type="submit"
+                className="w-full bg-agnos-blue hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 text-xl"
+            >
+                Next Step
+            </button>
+        </div>
+      </form>
+    </div>
+  );
+}
