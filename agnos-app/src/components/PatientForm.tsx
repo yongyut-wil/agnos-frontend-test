@@ -2,22 +2,67 @@
 
 import { useState, useEffect } from "react";
 import { useSocket } from "@/hooks/useSocket";
-import { PatientData } from "@/types/patient";
+import { Patient } from "@/types/patient";
+import { patientSchema } from "@/utils/validators";
 
 export default function PatientForm() {
   const socket = useSocket();
-  const [formData, setFormData] = useState<PatientData>({
+
+  // UI State
+  const [formData, setFormData] = useState({
     fullName: "",
     dateOfBirth: "",
     gender: "",
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Debounce emission of form data
   useEffect(() => {
     if (!socket) return;
 
     const timeoutId = setTimeout(() => {
-      socket.emit("patient:update", formData);
+      // Transform to Data Model
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ");
+
+      const payload: Partial<Patient> = {
+        firstName,
+        lastName,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+      };
+
+      // Real-time validation (checking only fields present in this step)
+      // We pick relevant fields from the full schema
+      const stepSchema = patientSchema.pick({
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+      });
+
+      const result = stepSchema.safeParse(payload);
+
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) {
+            // Map firstName/lastName errors back to fullName if needed
+            if (err.path[0] === 'firstName' || err.path[0] === 'lastName') {
+                 fieldErrors['fullName'] = "Full name is required (First and Last)";
+            } else {
+                 fieldErrors[err.path[0] as string] = err.message;
+            }
+          }
+        });
+        setErrors(fieldErrors);
+      } else {
+        setErrors({});
+      }
+
+      socket.emit("patient:update", payload);
     }, 300);
 
     return () => clearTimeout(timeoutId);
@@ -34,12 +79,11 @@ export default function PatientForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    // Submit logic
+    console.log("Form submitted");
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto py-12 px-6">
+    <div className="w-full max-w-2xl">
       {/* Header Section */}
       <section className="mb-10">
         <h1 className="text-3xl font-bold text-agnos-dark mb-3">Personal Information</h1>
@@ -49,7 +93,7 @@ export default function PatientForm() {
       </section>
 
       {/* Form Section */}
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="intake-form" onSubmit={handleSubmit} className="space-y-8">
         {/* Full Name Field */}
         <div className="flex flex-col gap-2">
           <label htmlFor="fullName" className="font-bold text-agnos-dark">
@@ -62,9 +106,10 @@ export default function PatientForm() {
             value={formData.fullName}
             onChange={handleChange}
             placeholder="e.g. John Doe"
-            className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg transition-all"
+            className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg ${errors.fullName ? 'border-red-500' : 'border-agnos-border'}`}
             required
           />
+          {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
         </div>
 
         {/* Date of Birth Field */}
@@ -72,15 +117,18 @@ export default function PatientForm() {
           <label htmlFor="dateOfBirth" className="font-bold text-agnos-dark">
             Date of Birth
           </label>
-          <input
-            type="date"
-            id="dateOfBirth"
-            name="dateOfBirth"
-            value={formData.dateOfBirth}
-            onChange={handleChange}
-            className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg appearance-none bg-white transition-all"
-            required
-          />
+          <div className="relative">
+            <input
+                type="date"
+                id="dateOfBirth"
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg appearance-none bg-white ${errors.dateOfBirth ? 'border-red-500' : 'border-agnos-border'}`}
+                required
+            />
+          </div>
+          {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
         </div>
 
         {/* Gender Selection */}
@@ -92,17 +140,18 @@ export default function PatientForm() {
                 key={option}
                 type="button"
                 onClick={() => handleGenderSelect(option)}
-                className={`flex-1 py-3 px-4 border rounded-lg text-center font-medium transition-all duration-200 hover:bg-gray-50 text-lg
+                className={`flex-1 py-3 px-4 border border-agnos-border rounded-lg text-center font-medium transition-all duration-200 hover:bg-gray-50 text-lg
                   ${
                     formData.gender === option
-                      ? "border-agnos-blue ring-1 ring-agnos-blue text-agnos-blue bg-blue-50/10"
-                      : "border-agnos-border text-gray-600"
+                      ? "border-agnos-blue ring-1 ring-agnos-blue text-agnos-blue active"
+                      : ""
                   }`}
               >
                 {option}
               </button>
             ))}
           </div>
+          {errors.gender && <p className="text-red-500 text-sm">{errors.gender}</p>}
         </div>
 
         {/* HIPAA Compliance Notice */}
@@ -126,16 +175,6 @@ export default function PatientForm() {
           <p className="text-sm leading-relaxed">
             Your data is encrypted and handled according to medical privacy standards (HIPAA compliant).
           </p>
-        </div>
-
-        {/* Submit Button (Sticky Footer simulation) */}
-        <div className="pt-6">
-            <button
-                type="submit"
-                className="w-full bg-agnos-blue hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 text-xl"
-            >
-                Next Step
-            </button>
         </div>
       </form>
     </div>
