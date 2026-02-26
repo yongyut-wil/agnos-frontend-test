@@ -47,6 +47,8 @@ export default function PatientForm() {
   const [formStatus, setFormStatus] = useState<FormStatus>("idle");
   const [submitMessage, setSubmitMessage] = useState("");
   const [activityTick, setActivityTick] = useState(0);
+  const [hasSubmittedAttempt, setHasSubmittedAttempt] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -94,6 +96,10 @@ export default function PatientForm() {
     return fieldErrors;
   };
 
+  const shouldShowError = (field: string) => {
+    return Boolean(errors[field]) && (hasSubmittedAttempt || touchedFields[field]);
+  };
+
   useEffect(() => {
     if (!socket) return;
 
@@ -138,6 +144,7 @@ export default function PatientForm() {
 
   const handleGenderSelect = (gender: string) => {
     setFormData((prev) => ({ ...prev, gender }));
+    setTouchedFields((prev) => ({ ...prev, gender: true }));
     setActivityTick((prev) => prev + 1);
     if (formStatus === "submitted") {
       setFormStatus("typing");
@@ -147,6 +154,7 @@ export default function PatientForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmittedAttempt(true);
 
     const payload = buildPayload();
     const result = patientSchema.safeParse(payload);
@@ -158,6 +166,7 @@ export default function PatientForm() {
     }
 
     setErrors({});
+    setHasSubmittedAttempt(false);
     setFormStatus("submitted");
     setSubmitMessage("Form submitted successfully.");
 
@@ -192,6 +201,13 @@ export default function PatientForm() {
       <form
         id="intake-form"
         onSubmit={handleSubmit}
+        onBlurCapture={(e) => {
+          const fieldName = (e.target as unknown as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).name;
+
+          if (fieldName) {
+            setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
+          }
+        }}
         className="space-y-8 [&_input]:text-agnos-dark [&_input]:caret-agnos-dark [&_textarea]:text-agnos-dark [&_textarea]:caret-agnos-dark"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,10 +222,10 @@ export default function PatientForm() {
               value={formData.firstName}
               onChange={handleChange}
               placeholder="e.g. Somchai"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.firstName ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("firstName") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+            {shouldShowError("firstName") && <p className="text-red-500 text-sm">{errors.firstName}</p>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -238,10 +254,10 @@ export default function PatientForm() {
               value={formData.lastName}
               onChange={handleChange}
               placeholder="e.g. Suksawat"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.lastName ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("lastName") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
+            {shouldShowError("lastName") && <p className="text-red-500 text-sm">{errors.lastName}</p>}
           </div>
         </div>
 
@@ -256,10 +272,10 @@ export default function PatientForm() {
               name="dateOfBirth"
               value={formData.dateOfBirth}
               onChange={handleChange}
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none bg-white ${errors.dateOfBirth ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none bg-white ${shouldShowError("dateOfBirth") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
+            {shouldShowError("dateOfBirth") && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -280,7 +296,7 @@ export default function PatientForm() {
                 </button>
               ))}
             </div>
-            {errors.gender && <p className="text-red-500 text-sm">{errors.gender}</p>}
+            {shouldShowError("gender") && <p className="text-red-500 text-sm">{errors.gender}</p>}
           </div>
         </div>
 
@@ -296,10 +312,10 @@ export default function PatientForm() {
               value={formData.phone}
               onChange={handleChange}
               placeholder="e.g. +66 8X XXX XXXX"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.phone ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("phone") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+            {shouldShowError("phone") && <p className="text-red-500 text-sm">{errors.phone}</p>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -313,10 +329,10 @@ export default function PatientForm() {
               value={formData.email}
               onChange={handleChange}
               placeholder="e.g. somchai@email.com"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.email ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("email") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+            {shouldShowError("email") && <p className="text-red-500 text-sm">{errors.email}</p>}
           </div>
         </div>
 
@@ -332,10 +348,10 @@ export default function PatientForm() {
               onChange={handleChange}
               rows={3}
               placeholder="House no., street, district, province, postal code"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.address ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("address") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
+            {shouldShowError("address") && <p className="text-red-500 text-sm">{errors.address}</p>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -349,10 +365,10 @@ export default function PatientForm() {
               value={formData.preferredLanguage}
               onChange={handleChange}
               placeholder="e.g. Thai"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.preferredLanguage ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("preferredLanguage") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.preferredLanguage && <p className="text-red-500 text-sm">{errors.preferredLanguage}</p>}
+            {shouldShowError("preferredLanguage") && <p className="text-red-500 text-sm">{errors.preferredLanguage}</p>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -366,10 +382,10 @@ export default function PatientForm() {
               value={formData.nationality}
               onChange={handleChange}
               placeholder="e.g. Thai"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.nationality ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("nationality") ? "border-red-500" : "border-agnos-border"}`}
               required
             />
-            {errors.nationality && <p className="text-red-500 text-sm">{errors.nationality}</p>}
+            {shouldShowError("nationality") && <p className="text-red-500 text-sm">{errors.nationality}</p>}
           </div>
         </div>
 
@@ -385,9 +401,9 @@ export default function PatientForm() {
               value={formData.emergencyContactName}
               onChange={handleChange}
               placeholder="e.g. Suda Suksawat"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.emergencyContactName ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("emergencyContactName") ? "border-red-500" : "border-agnos-border"}`}
             />
-            {errors.emergencyContactName && <p className="text-red-500 text-sm">{errors.emergencyContactName}</p>}
+            {shouldShowError("emergencyContactName") && <p className="text-red-500 text-sm">{errors.emergencyContactName}</p>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -401,9 +417,9 @@ export default function PatientForm() {
               value={formData.emergencyContactRelationship}
               onChange={handleChange}
               placeholder="e.g. Spouse / Parent"
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.emergencyContactRelationship ? "border-red-500" : "border-agnos-border"}`}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${shouldShowError("emergencyContactRelationship") ? "border-red-500" : "border-agnos-border"}`}
             />
-            {errors.emergencyContactRelationship && <p className="text-red-500 text-sm">{errors.emergencyContactRelationship}</p>}
+            {shouldShowError("emergencyContactRelationship") && <p className="text-red-500 text-sm">{errors.emergencyContactRelationship}</p>}
           </div>
 
           <div className="flex flex-col gap-2 md:col-span-2">
