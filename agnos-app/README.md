@@ -21,6 +21,10 @@ Realtime patient intake form with a synchronized staff monitoring dashboard.
   - Religion (optional)
 - Realtime validation using **Zod**
 - Inline field-level errors
+- Hybrid validation UX:
+  - No red errors on first page load
+  - Show field error after user touches/leaves a field
+  - Show all remaining errors when user presses submit
 - Live form state indicator:
   - `Idle`
   - `Filling form`
@@ -41,9 +45,9 @@ Realtime patient intake form with a synchronized staff monitoring dashboard.
 
 Socket events used:
 
-- `patient:update` → broadcast latest partial/full form payload
-- `patient:status` → broadcast patient state (`idle`, `typing`, `submitted`)
-- `patient:submit` → broadcast submitted payload snapshot
+- `patient:update` → broadcast latest partial/full form payload to `staff` room only
+- `patient:status` → broadcast patient state (`idle`, `typing`, `submitted`) to connected clients
+- `patient:submit` → broadcast submitted payload snapshot to connected clients
 
 ## Run Locally
 

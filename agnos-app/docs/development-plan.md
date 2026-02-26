@@ -32,7 +32,10 @@ server.js                  # Custom Next + Socket.IO realtime server
   - Demographics
   - Contact and address
   - Optional emergency and religion fields
-- Inline validation feedback appears per field.
+- Uses hybrid validation feedback:
+  - No red errors on first load
+  - Field-level error after touch/blur
+  - Full error set shown when user submits
 - Status chip at top communicates current form state (`Idle`, `Filling form`, `Submitted`).
 - Mobile-first layout with `grid-cols-1`, upgraded to two-column layout on medium screens.
 
@@ -60,7 +63,9 @@ server.js                  # Custom Next + Socket.IO realtime server
   - Shared by both patient and staff interfaces
 
 - **server.js**
-  - Broadcast hub for realtime events to connected clients
+  - Broadcast hub with room-based routing for realtime events
+  - `patient:update` is emitted to `staff` room only
+  - `patient:status` and `patient:submit` are emitted to connected clients
   - Adds `lastUpdated` timestamp for update and submit snapshots
 
 ## 4) Realtime Synchronization Flow
@@ -68,7 +73,7 @@ server.js                  # Custom Next + Socket.IO realtime server
 1. Patient types in form.
 2. `PatientForm` debounces and emits `patient:update` with current payload.
 3. `PatientForm` emits `patient:status` as `typing`.
-4. Server broadcasts to all connected clients.
+4. Server emits `patient:update` to `staff` room only.
 5. `StaffDashboard` updates visible field values instantly.
 6. If no activity for a timeout window, status becomes `idle`.
 7. On submit, `PatientForm` emits `patient:submit` and `patient:status= submitted`.

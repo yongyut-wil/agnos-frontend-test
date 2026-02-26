@@ -108,6 +108,8 @@ npm install -D tailwindcss @tailwindcss/postcss
 - `patient:update`
 - `patient:status`
 - `patient:submit`
+- ให้ `patient:update` ส่งเข้าห้อง `staff` เท่านั้น เพื่อจำกัดการกระจายข้อมูล
+- ให้ staff client เรียก `join:staff` เมื่อเข้า dashboard
 - ใส่ `lastUpdated` ตอน broadcast update/submit
 
 ---
@@ -203,11 +205,15 @@ src/
 1. State ของฟอร์มทุก field
 2. State ของ status (`idle`, `typing`, `submitted`)
 3. realtime validation (Zod)
-4. debounce ส่ง `patient:update`
-5. ส่ง `patient:status`
-6. ตอน submit ส่ง `patient:submit`
-7. แสดง error ใต้ฟิลด์
-8. รองรับมือถือ/เดสก์ท็อป
+4. State สำหรับ `touched fields` และ `submit attempt`
+5. debounce ส่ง `patient:update`
+6. ส่ง `patient:status`
+7. ตอน submit ส่ง `patient:submit`
+8. แสดง error แบบ hybrid:
+   - ยังไม่โชว์ error ตอนเปิดหน้าครั้งแรก
+   - โชว์เฉพาะ field ที่ touch/blur แล้ว
+   - กด submit ให้โชว์ error ที่เหลือทั้งหมด
+9. รองรับมือถือ/เดสก์ท็อป
 
 โค้ดอ้างอิง:
 - `src/components/PatientForm.tsx`
@@ -340,6 +346,10 @@ npm run start
 - เช็กว่าฝั่ง patient emit `patient:status`
 - เช็กว่าฝั่ง server broadcast `patient:status`
 - เช็กว่าฝั่ง staff subscribe event นี้
+
+### ปัญหา 4: ขึ้น error ทุกช่องตั้งแต่ยังไม่เริ่มกรอก
+- เช็กว่ามี state `touched fields` และ `submit attempt`
+- เช็กว่าเงื่อนไข render error ใช้ `(touched || submitted)`
 
 ---
 
