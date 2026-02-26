@@ -18,11 +18,13 @@ app.prepare().then(() => {
 
     socket.on("patient:update", (data) => {
       const payload = { ...data, lastUpdated: new Date().toISOString() };
-      io.emit("patient:update", payload);
+      // Broadcast to staff room only for better security/privacy practice
+      io.to("staff").emit("patient:update", payload);
     });
 
     socket.on("join:staff", () => {
         socket.join("staff");
+        console.log("Staff joined room: staff");
     });
 
     socket.on("disconnect", () => {
