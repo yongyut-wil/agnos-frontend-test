@@ -1,161 +1,434 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { Patient } from "@/types/patient";
 import { patientSchema } from "@/utils/validators";
+import { ZodIssue } from "zod";
+
+type FormStatus = "idle" | "typing" | "submitted";
+
+type FormDataState = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  phone: string;
+  email: string;
+  address: string;
+  preferredLanguage: string;
+  nationality: string;
+  emergencyContactName: string;
+  emergencyContactRelationship: string;
+  religion: string;
+};
+
+const initialFormData: FormDataState = {
+  firstName: "",
+  middleName: "",
+  lastName: "",
+  dateOfBirth: "",
+  gender: "",
+  phone: "",
+  email: "",
+  address: "",
+  preferredLanguage: "",
+  nationality: "",
+  emergencyContactName: "",
+  emergencyContactRelationship: "",
+  religion: "",
+};
 
 export default function PatientForm() {
   const socket = useSocket();
 
-  // UI State
-  const [formData, setFormData] = useState({
-    fullName: "",
-    dateOfBirth: "",
-    gender: "",
-  });
+  const [formData, setFormData] = useState<FormDataState>(initialFormData);
+  const [formStatus, setFormStatus] = useState<FormStatus>("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [activityTick, setActivityTick] = useState(0);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Debounce emission of form data
+  const buildPayload = useCallback((): Partial<Patient> => {
+    const hasEmergencyInput =
+      formData.emergencyContactName.trim().length > 0 ||
+      formData.emergencyContactRelationship.trim().length > 0;
+
+    return {
+      firstName: formData.firstName.trim(),
+      middleName: formData.middleName.trim() || undefined,
+      lastName: formData.lastName.trim(),
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+      address: formData.address.trim(),
+      preferredLanguage: formData.preferredLanguage.trim(),
+      nationality: formData.nationality.trim(),
+      emergencyContact: hasEmergencyInput
+        ? {
+            name: formData.emergencyContactName.trim(),
+            relationship: formData.emergencyContactRelationship.trim(),
+          }
+        : undefined,
+      religion: formData.religion.trim() || undefined,
+    };
+  }, [formData]);
+
+  const mapValidationErrors = (issues: ZodIssue[]) => {
+    const fieldErrors: Record<string, string> = {};
+
+    issues.forEach((err) => {
+      const path = err.path.map((segment) => String(segment)).join(".");
+
+      if (path === "emergencyContact.name") {
+        fieldErrors.emergencyContactName = err.message;
+      } else if (path === "emergencyContact.relationship") {
+        fieldErrors.emergencyContactRelationship = err.message;
+      } else if (path) {
+        fieldErrors[path] = err.message;
+      }
+    });
+
+    return fieldErrors;
+  };
+
   useEffect(() => {
     if (!socket) return;
 
     const timeoutId = setTimeout(() => {
-      // Transform to Data Model
-      const nameParts = formData.fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ");
-
-      const payload: Partial<Patient> = {
-        firstName,
-        lastName,
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
-      };
-
-      // Real-time validation (checking only fields present in this step)
-      // We pick relevant fields from the full schema
-      const stepSchema = patientSchema.pick({
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
-        gender: true,
-      });
-
-      const result = stepSchema.safeParse(payload);
+      const payload = buildPayload();
+      const result = patientSchema.safeParse(payload);
 
       if (!result.success) {
-        const fieldErrors: Record<string, string> = {};
-        result.error.errors.forEach((err) => {
-          if (err.path[0]) {
-            // Map firstName/lastName errors back to fullName if needed
-            if (err.path[0] === 'firstName' || err.path[0] === 'lastName') {
-                 fieldErrors['fullName'] = "Full name is required (First and Last)";
-            } else {
-                 fieldErrors[err.path[0] as string] = err.message;
-            }
-          }
-        });
-        setErrors(fieldErrors);
+        setErrors(mapValidationErrors(result.error.issues));
       } else {
         setErrors({});
       }
 
       socket.emit("patient:update", payload);
+      socket.emit("patient:status", { status: "typing" });
+      setFormStatus((prev) => (prev === "submitted" ? prev : "typing"));
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [formData, socket]);
+  }, [buildPayload, socket]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (!socket || formStatus === "submitted") return;
+
+    const timeoutId = setTimeout(() => {
+      setFormStatus("idle");
+      socket.emit("patient:status", { status: "idle" });
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [activityTick, socket, formStatus]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setActivityTick((prev) => prev + 1);
+    if (formStatus === "submitted") {
+      setFormStatus("typing");
+    }
+    setSubmitMessage("");
   };
 
   const handleGenderSelect = (gender: string) => {
     setFormData((prev) => ({ ...prev, gender }));
+    setActivityTick((prev) => prev + 1);
+    if (formStatus === "submitted") {
+      setFormStatus("typing");
+    }
+    setSubmitMessage("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted");
+
+    const payload = buildPayload();
+    const result = patientSchema.safeParse(payload);
+
+    if (!result.success) {
+      setErrors(mapValidationErrors(result.error.issues));
+      setSubmitMessage("Please fix validation errors before submitting.");
+      return;
+    }
+
+    setErrors({});
+    setFormStatus("submitted");
+    setSubmitMessage("Form submitted successfully.");
+
+    if (socket) {
+      socket.emit("patient:update", payload);
+      socket.emit("patient:submit", payload);
+      socket.emit("patient:status", { status: "submitted" });
+    }
   };
 
   return (
-    <div className="w-full max-w-2xl">
-      {/* Header Section */}
+    <div className="w-full max-w-4xl">
       <section className="mb-10">
-        <h1 className="text-3xl font-bold text-agnos-dark mb-3">Personal Information</h1>
+        <h1 className="text-3xl font-bold text-agnos-dark mb-3">Patient Intake Form</h1>
         <p className="text-agnos-gray text-lg">
-          Please provide your details as they appear on your official identification documents.
+          Please complete the form below. Your information is synced with staff in real-time.
         </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-agnos-border bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-agnos-gray">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              formStatus === "submitted"
+                ? "bg-green-500"
+                : formStatus === "typing"
+                  ? "bg-blue-500 animate-pulse"
+                  : "bg-gray-400"
+            }`}
+          />
+          {formStatus === "submitted" ? "Submitted" : formStatus === "typing" ? "Filling form" : "Idle"}
+        </div>
       </section>
 
-      {/* Form Section */}
-      <form id="intake-form" onSubmit={handleSubmit} className="space-y-8">
-        {/* Full Name Field */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="fullName" className="font-bold text-agnos-dark">
-            Full Name
-          </label>
-          <input
-            type="text"
-            id="fullName"
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleChange}
-            placeholder="e.g. John Doe"
-            className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg ${errors.fullName ? 'border-red-500' : 'border-agnos-border'}`}
-            required
-          />
-          {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
-        </div>
-
-        {/* Date of Birth Field */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="dateOfBirth" className="font-bold text-agnos-dark">
-            Date of Birth
-          </label>
-          <div className="relative">
+      <form
+        id="intake-form"
+        onSubmit={handleSubmit}
+        className="space-y-8 [&_input]:text-agnos-dark [&_input]:caret-agnos-dark [&_textarea]:text-agnos-dark [&_textarea]:caret-agnos-dark"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="firstName" className="font-bold text-agnos-dark">
+              First Name *
+            </label>
             <input
-                type="date"
-                id="dateOfBirth"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none text-lg appearance-none bg-white ${errors.dateOfBirth ? 'border-red-500' : 'border-agnos-border'}`}
-                required
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="e.g. Somchai"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.firstName ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="middleName" className="font-bold text-agnos-dark">
+              Middle Name (Optional)
+            </label>
+            <input
+              type="text"
+              id="middleName"
+              name="middleName"
+              value={formData.middleName}
+              onChange={handleChange}
+              placeholder="e.g. Chai"
+              className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100"
             />
           </div>
-          {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
-        </div>
 
-        {/* Gender Selection */}
-        <div className="flex flex-col gap-3">
-          <label className="font-bold text-agnos-dark">Gender</label>
-          <div className="flex flex-wrap md:flex-nowrap gap-4">
-            {["Male", "Female", "Other"].map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => handleGenderSelect(option)}
-                className={`flex-1 py-3 px-4 border border-agnos-border rounded-lg text-center font-medium transition-all duration-200 hover:bg-gray-50 text-lg
-                  ${
-                    formData.gender === option
-                      ? "border-agnos-blue ring-1 ring-agnos-blue text-agnos-blue active"
-                      : ""
-                  }`}
-              >
-                {option}
-              </button>
-            ))}
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label htmlFor="lastName" className="font-bold text-agnos-dark">
+              Last Name *
+            </label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="e.g. Suksawat"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.lastName ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
           </div>
-          {errors.gender && <p className="text-red-500 text-sm">{errors.gender}</p>}
         </div>
 
-        {/* HIPAA Compliance Notice */}
-        <div className="flex items-start gap-3 pt-4 text-agnos-gray">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="dateOfBirth" className="font-bold text-agnos-dark">
+              Date of Birth *
+            </label>
+            <input
+              type="date"
+              id="dateOfBirth"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none bg-white ${errors.dateOfBirth ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.dateOfBirth && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <label className="font-bold text-agnos-dark">Gender *</label>
+            <div className="flex flex-wrap gap-3">
+              {["Male", "Female", "Other"].map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => handleGenderSelect(option)}
+                  className={`min-w-27.5 py-3 px-4 border rounded-lg text-center font-medium transition-all duration-200 hover:bg-gray-50 ${
+                    formData.gender === option
+                      ? "border-agnos-blue ring-1 ring-agnos-blue text-agnos-blue"
+                      : "border-agnos-border text-agnos-dark"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            {errors.gender && <p className="text-red-500 text-sm">{errors.gender}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="phone" className="font-bold text-agnos-dark">
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="e.g. +66 8X XXX XXXX"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.phone ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="font-bold text-agnos-dark">
+              Email *
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="e.g. somchai@email.com"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.email ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label htmlFor="address" className="font-bold text-agnos-dark">
+              Address *
+            </label>
+            <textarea
+              id="address"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              rows={3}
+              placeholder="House no., street, district, province, postal code"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.address ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="preferredLanguage" className="font-bold text-agnos-dark">
+              Preferred Language *
+            </label>
+            <input
+              type="text"
+              id="preferredLanguage"
+              name="preferredLanguage"
+              value={formData.preferredLanguage}
+              onChange={handleChange}
+              placeholder="e.g. Thai"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.preferredLanguage ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.preferredLanguage && <p className="text-red-500 text-sm">{errors.preferredLanguage}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="nationality" className="font-bold text-agnos-dark">
+              Nationality *
+            </label>
+            <input
+              type="text"
+              id="nationality"
+              name="nationality"
+              value={formData.nationality}
+              onChange={handleChange}
+              placeholder="e.g. Thai"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.nationality ? "border-red-500" : "border-agnos-border"}`}
+              required
+            />
+            {errors.nationality && <p className="text-red-500 text-sm">{errors.nationality}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="emergencyContactName" className="font-bold text-agnos-dark">
+              Emergency Contact Name (Optional)
+            </label>
+            <input
+              type="text"
+              id="emergencyContactName"
+              name="emergencyContactName"
+              value={formData.emergencyContactName}
+              onChange={handleChange}
+              placeholder="e.g. Suda Suksawat"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.emergencyContactName ? "border-red-500" : "border-agnos-border"}`}
+            />
+            {errors.emergencyContactName && <p className="text-red-500 text-sm">{errors.emergencyContactName}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="emergencyContactRelationship" className="font-bold text-agnos-dark">
+              Emergency Contact Relationship (Optional)
+            </label>
+            <input
+              type="text"
+              id="emergencyContactRelationship"
+              name="emergencyContactRelationship"
+              value={formData.emergencyContactRelationship}
+              onChange={handleChange}
+              placeholder="e.g. Spouse / Parent"
+              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100 ${errors.emergencyContactRelationship ? "border-red-500" : "border-agnos-border"}`}
+            />
+            {errors.emergencyContactRelationship && <p className="text-red-500 text-sm">{errors.emergencyContactRelationship}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label htmlFor="religion" className="font-bold text-agnos-dark">
+              Religion (Optional)
+            </label>
+            <input
+              type="text"
+              id="religion"
+              name="religion"
+              value={formData.religion}
+              onChange={handleChange}
+              placeholder="e.g. Buddhism"
+              className="w-full p-4 border border-agnos-border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none placeholder:text-gray-500 placeholder:opacity-100"
+            />
+          </div>
+        </div>
+
+        {submitMessage && (
+          <p className={`text-sm font-medium ${formStatus === "submitted" ? "text-green-600" : "text-red-500"}`}>
+            {submitMessage}
+          </p>
+        )}
+
+        <div className="flex items-start gap-3 pt-2 text-agnos-gray">
           <div className="mt-1">
             <svg
               className="h-5 w-5 text-agnos-blue"
@@ -176,6 +449,13 @@ export default function PatientForm() {
             Your data is encrypted and handled according to medical privacy standards (HIPAA compliant).
           </p>
         </div>
+
+        <button
+          type="submit"
+          className="w-full bg-agnos-blue hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 text-lg"
+        >
+          Submit Intake Form
+        </button>
       </form>
     </div>
   );

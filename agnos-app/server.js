@@ -22,6 +22,15 @@ app.prepare().then(() => {
       io.to("staff").emit("patient:update", payload);
     });
 
+    socket.on("patient:status", (data) => {
+      io.emit("patient:status", data);
+    });
+
+    socket.on("patient:submit", (data) => {
+      const payload = { ...data, lastUpdated: new Date().toISOString() };
+      io.emit("patient:submit", payload);
+    });
+
     socket.on("join:staff", () => {
         socket.join("staff");
         console.log("Staff joined room: staff");

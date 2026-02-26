@@ -2,7 +2,7 @@ import { LayoutDashboard, Users, Settings } from "lucide-react";
 
 export default function StaffSidebar() {
   return (
-    <aside className="w-64 bg-agnos-dark text-white flex flex-col h-screen fixed left-0 top-0 overflow-y-auto">
+    <aside className="w-full lg:w-64 bg-agnos-dark text-white flex flex-col lg:h-screen lg:fixed left-0 top-0 overflow-y-auto">
       {/* Header */}
       <div className="p-6 border-b border-white/10">
         <h1 className="text-xl font-bold">Agnos Staff</h1>
@@ -10,7 +10,7 @@ export default function StaffSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 space-y-1">
+      <nav className="flex-1 py-4 lg:py-6 px-3 space-y-1">
         <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-600/20 text-blue-400 border-l-4 border-blue-500 transition-colors">
           <LayoutDashboard className="w-5 h-5" />
           <span className="font-medium">Monitor</span>
@@ -26,7 +26,7 @@ export default function StaffSidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-white/10 bg-black/20">
+      <div className="p-4 border-t border-white/10 bg-black/20 hidden lg:block">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
             SS

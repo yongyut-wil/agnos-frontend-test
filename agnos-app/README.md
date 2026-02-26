@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agnos Realtime Patient Intake
 
-## Getting Started
+Realtime patient intake form with a synchronized staff monitoring dashboard.
 
-First, run the development server:
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Styling:** Tailwind CSS v4
+- **Realtime Communication:** Socket.IO (WebSocket transport via custom Node server)
+
+## Core Features
+
+### 1) Patient Form (`/patient`)
+
+- Collects all required intake fields:
+  - First name, middle name (optional), last name
+  - Date of birth, gender
+  - Phone, email, address
+  - Preferred language, nationality
+  - Emergency contact (optional: name + relationship)
+  - Religion (optional)
+- Realtime validation using **Zod**
+- Inline field-level errors
+- Live form state indicator:
+  - `Idle`
+  - `Filling form`
+  - `Submitted`
+- Fully responsive for mobile and desktop
+
+### 2) Staff Dashboard (`/staff`)
+
+- Receives and renders each patient field in realtime
+- Displays live status badge:
+  - `Idle`
+  - `Filling form`
+  - `Submitted`
+- Shows last updated timestamp and derived age from date of birth
+- Responsive layout for smaller and larger screens
+
+### 3) Realtime Synchronization
+
+Socket events used:
+
+- `patient:update` → broadcast latest partial/full form payload
+- `patient:status` → broadcast patient state (`idle`, `typing`, `submitted`)
+- `patient:submit` → broadcast submitted payload snapshot
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `http://localhost:3000` (landing)
+- `http://localhost:3000/patient`
+- `http://localhost:3000/staff`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quality Checks
 
-## Learn More
+```bash
+npm run lint
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project uses a custom `server.js` for Next.js + Socket.IO.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Recommended platforms
 
-## Deploy on Vercel
+1. **Render / Railway / Heroku** (recommended for persistent Node server)
+2. **Vercel** (requires separate realtime backend strategy; raw Socket.IO server in same process is not ideal on serverless)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Example production command
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm run start
+```
+
+## Deliverables Checklist
+
+- [ ] Repository URL: `PASTE_YOUR_REPO_URL`
+- [ ] Live URL: `PASTE_YOUR_DEPLOYED_URL`
+- [x] README with setup + feature details
+- [x] Development planning document at `docs/development-plan.md`
