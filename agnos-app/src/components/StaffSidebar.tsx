@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LayoutDashboard, Users, Settings } from "lucide-react";
 
 export default function StaffSidebar() {
@@ -11,6 +12,12 @@ export default function StaffSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 lg:py-6 px-3 space-y-1">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-white/5 hover:text-white transition-colors border-l-4 border-transparent"
+        >
+          <span className="font-medium">Back to Home</span>
+        </Link>
         <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-600/20 text-blue-400 border-l-4 border-blue-500 transition-colors">
           <LayoutDashboard className="w-5 h-5" />
           <span className="font-medium">Monitor</span>
@@ -29,10 +36,10 @@ export default function StaffSidebar() {
       <div className="p-4 border-t border-white/10 bg-black/20 hidden lg:block">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-            SS
+            KH
           </div>
           <div>
-            <p className="text-sm font-bold text-white">Dr. Sarah Smith</p>
+            <p className="text-sm font-bold text-white">Dr. Khochapak</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               <span className="text-xs text-gray-400">Online</span>
