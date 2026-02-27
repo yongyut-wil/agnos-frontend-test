@@ -77,8 +77,8 @@ export default function PatientForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const buildPayload = useCallback((): Partial<Patient> => {
-    const hasEmergencyInput =
-      formData.emergencyContactName.trim().length > 0 ||
+    const hasCompleteEmergencyInput =
+      formData.emergencyContactName.trim().length > 0 &&
       formData.emergencyContactRelationship.trim().length > 0;
 
     return {
@@ -92,7 +92,7 @@ export default function PatientForm() {
       address: formData.address.trim(),
       preferredLanguage: formData.preferredLanguage.trim(),
       nationality: formData.nationality.trim(),
-      emergencyContact: hasEmergencyInput
+      emergencyContact: hasCompleteEmergencyInput
         ? {
             name: formData.emergencyContactName.trim(),
             relationship: formData.emergencyContactRelationship.trim(),
