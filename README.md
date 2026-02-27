@@ -32,6 +32,8 @@ npm run dev
 
 ## Screenshots
 
+### Desktop
+
 ### Landing Page
 
 ![Agnos Landing](./public/agnos-frontend-test.onrender.com_.png)
@@ -43,6 +45,20 @@ npm run dev
 ### Staff Page
 
 ![Agnos Staff](./public/agnos-frontend-test.onrender.com_staff.png)
+
+### Mobile
+
+### Landing Page (Mobile)
+
+![Agnos Landing Mobile](./public/agnos-frontend-test.onrender.com_%20md_size.png)
+
+### Patient Page (Mobile)
+
+![Agnos Patient Mobile](./public/agnos-frontend-test.onrender.com_patient_md_size.png)
+
+### Staff Page (Mobile)
+
+![Agnos Staff Mobile](./public/agnos-frontend-test.onrender.com_staff_md_size.png)
 
 ## Tech Stack
 
