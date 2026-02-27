@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { Patient } from "@/types/patient";
 import { patientSchema } from "@/utils/validators";
@@ -40,6 +40,27 @@ const initialFormData: FormDataState = {
   religion: "",
 };
 
+const DOB_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+const formatDateForDisplay = (value: string) => {
+  if (!value) return "Select date of birth";
+
+  const parsed = new Date(`${value}T00:00:00`);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
+};
+
+const toISODate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export default function PatientForm() {
   const socket = useSocket();
 
@@ -49,6 +70,9 @@ export default function PatientForm() {
   const [activityTick, setActivityTick] = useState(0);
   const [hasSubmittedAttempt, setHasSubmittedAttempt] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [isDobCalendarOpen, setIsDobCalendarOpen] = useState(false);
+  const [dobViewDate, setDobViewDate] = useState(() => new Date());
+  const dobCalendarRef = useRef<HTMLDivElement | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -97,8 +121,29 @@ export default function PatientForm() {
   };
 
   const shouldShowError = (field: string) => {
+    if (field === "dateOfBirth" && isDobCalendarOpen) {
+      return false;
+    }
+
     return Boolean(errors[field]) && (hasSubmittedAttempt || touchedFields[field]);
   };
+
+  useEffect(() => {
+    if (!isDobCalendarOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (dobCalendarRef.current && !dobCalendarRef.current.contains(event.target as Node)) {
+        setIsDobCalendarOpen(false);
+        setTouchedFields((prev) => ({ ...prev, dateOfBirth: true }));
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isDobCalendarOpen]);
 
   useEffect(() => {
     if (!socket) return;
@@ -140,6 +185,26 @@ export default function PatientForm() {
       setFormStatus("typing");
     }
     setSubmitMessage("");
+  };
+
+  const handleDateOfBirthSelect = (selectedDate: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate > today) return;
+
+    const selectedValue = toISODate(selectedDate);
+
+    setFormData((prev) => ({ ...prev, dateOfBirth: selectedValue }));
+    setTouchedFields((prev) => ({ ...prev, dateOfBirth: true }));
+    setActivityTick((prev) => prev + 1);
+
+    if (formStatus === "submitted") {
+      setFormStatus("typing");
+    }
+
+    setSubmitMessage("");
+    setIsDobCalendarOpen(false);
   };
 
   const handleGenderSelect = (gender: string) => {
@@ -266,15 +331,102 @@ export default function PatientForm() {
             <label htmlFor="dateOfBirth" className="font-bold text-agnos-dark">
               Date of Birth *
             </label>
-            <input
-              type="date"
-              id="dateOfBirth"
-              name="dateOfBirth"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue outline-none bg-white ${shouldShowError("dateOfBirth") ? "border-red-500" : "border-agnos-border"}`}
-              required
-            />
+            <div className="relative" ref={dobCalendarRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDobCalendarOpen) {
+                    setIsDobCalendarOpen(false);
+                    setTouchedFields((prev) => ({ ...prev, dateOfBirth: true }));
+                    return;
+                  }
+
+                  const selectedDate = formData.dateOfBirth ? new Date(`${formData.dateOfBirth}T00:00:00`) : new Date();
+                  if (!Number.isNaN(selectedDate.getTime())) {
+                    setDobViewDate(selectedDate);
+                  }
+                  setIsDobCalendarOpen(true);
+                }}
+                id="dateOfBirth"
+                className={`w-full h-14 px-4 border rounded-xl outline-none bg-white shadow-sm text-left transition-colors focus:ring-2 focus:ring-agnos-blue focus:border-agnos-blue ${
+                  shouldShowError("dateOfBirth") ? "border-red-500 bg-red-50/30" : "border-agnos-border hover:border-agnos-blue/40"
+                } ${formData.dateOfBirth ? "text-agnos-dark" : "text-agnos-gray"}`}
+                aria-haspopup="dialog"
+                aria-expanded={isDobCalendarOpen}
+              >
+                <span>{formatDateForDisplay(formData.dateOfBirth)}</span>
+              </button>
+
+              {isDobCalendarOpen && (
+                <div className="absolute z-20 mt-2 w-full rounded-2xl border border-agnos-border bg-white p-4 shadow-xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setDobViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                      className="rounded-lg border border-agnos-border px-2 py-1 text-sm text-agnos-dark hover:bg-gray-50"
+                      aria-label="Previous month"
+                    >
+                      ←
+                    </button>
+                    <p className="text-sm font-semibold text-agnos-dark">
+                      {dobViewDate.toLocaleString("en-US", { month: "long", year: "numeric" })}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDobViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                      className="rounded-lg border border-agnos-border px-2 py-1 text-sm text-agnos-dark hover:bg-gray-50"
+                      aria-label="Next month"
+                    >
+                      →
+                    </button>
+                  </div>
+
+                  <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-agnos-gray">
+                    {DOB_WEEKDAYS.map((day) => (
+                      <span key={day}>{day}</span>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({
+                      length: new Date(dobViewDate.getFullYear(), dobViewDate.getMonth(), 1).getDay(),
+                    }).map((_, index) => (
+                      <span key={`blank-${index}`} className="h-9" />
+                    ))}
+
+                    {Array.from({ length: new Date(dobViewDate.getFullYear(), dobViewDate.getMonth() + 1, 0).getDate() }).map(
+                      (_, index) => {
+                        const day = index + 1;
+                        const date = new Date(dobViewDate.getFullYear(), dobViewDate.getMonth(), day);
+                        const isoDate = toISODate(date);
+                        const isSelected = formData.dateOfBirth === isoDate;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const isFuture = date > today;
+
+                        return (
+                          <button
+                            key={isoDate}
+                            type="button"
+                            onClick={() => handleDateOfBirthSelect(date)}
+                            disabled={isFuture}
+                            className={`h-9 rounded-lg text-sm transition-colors ${
+                              isSelected
+                                ? "bg-agnos-blue text-white"
+                                : isFuture
+                                  ? "cursor-not-allowed text-gray-300"
+                                  : "text-agnos-dark hover:bg-blue-50"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             {shouldShowError("dateOfBirth") && <p className="text-red-500 text-sm">{errors.dateOfBirth}</p>}
           </div>
 

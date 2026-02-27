@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Settings } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Settings } from "lucide-react";
 
 export default function StaffSidebar() {
   return (
@@ -14,8 +14,10 @@ export default function StaffSidebar() {
       <nav className="flex-1 py-4 lg:py-6 px-3 space-y-1">
         <Link
           href="/"
-          className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-white/5 hover:text-white transition-colors border-l-4 border-transparent"
+          aria-label="Back to Home"
+          className="mb-3 flex items-center gap-3 rounded-xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-blue-200 transition-all hover:border-blue-300/40 hover:bg-blue-500/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
         >
+          <ArrowLeft className="w-4 h-4" />
           <span className="font-medium">Back to Home</span>
         </Link>
         <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-600/20 text-blue-400 border-l-4 border-blue-500 transition-colors">
