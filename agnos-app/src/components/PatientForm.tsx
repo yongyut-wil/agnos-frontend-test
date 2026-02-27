@@ -197,6 +197,10 @@ export default function PatientForm() {
 
     setFormData((prev) => ({ ...prev, dateOfBirth: selectedValue }));
     setTouchedFields((prev) => ({ ...prev, dateOfBirth: true }));
+    setErrors((prev) => {
+      const { dateOfBirth, ...rest } = prev;
+      return dateOfBirth ? rest : prev;
+    });
     setActivityTick((prev) => prev + 1);
 
     if (formStatus === "submitted") {
@@ -211,11 +215,8 @@ export default function PatientForm() {
     setFormData((prev) => ({ ...prev, gender }));
     setTouchedFields((prev) => ({ ...prev, gender: true }));
     setErrors((prev) => {
-      if (!prev.gender) return prev;
-
-      const rest = { ...prev };
-      delete rest.gender;
-      return rest;
+      const { gender, ...rest } = prev;
+      return gender ? rest : prev;
     });
     setActivityTick((prev) => prev + 1);
     if (formStatus === "submitted") {
