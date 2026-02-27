@@ -30,6 +30,20 @@ npm run dev
 - `http://localhost:3000/patient`
 - `http://localhost:3000/staff`
 
+## Screenshots
+
+### Landing Page
+
+![Agnos Landing](./public/agnos-frontend-test.onrender.com_.png)
+
+### Patient Page
+
+![Agnos Patient](./public/agnos-frontend-test.onrender.com_patient.png)
+
+### Staff Page
+
+![Agnos Staff](./public/agnos-frontend-test.onrender.com_staff.png)
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
