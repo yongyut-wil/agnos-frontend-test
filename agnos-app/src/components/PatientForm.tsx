@@ -146,7 +146,7 @@ export default function PatientForm() {
   }, [isDobCalendarOpen]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || activityTick === 0) return;
 
     const timeoutId = setTimeout(() => {
       const payload = buildPayload();
@@ -164,7 +164,7 @@ export default function PatientForm() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [buildPayload, socket]);
+  }, [buildPayload, socket, activityTick]);
 
   useEffect(() => {
     if (!socket || formStatus === "submitted") return;
