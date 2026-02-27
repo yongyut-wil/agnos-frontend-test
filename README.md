@@ -48,17 +48,11 @@ npm run dev
 
 ### Mobile
 
-### Landing Page (Mobile)
-
-![Agnos Landing Mobile](./public/agnos-frontend-test.onrender.com_%20md_size.png)
-
-### Patient Page (Mobile)
-
-![Agnos Patient Mobile](./public/agnos-frontend-test.onrender.com_patient_md_size.png)
-
-### Staff Page (Mobile)
-
-![Agnos Staff Mobile](./public/agnos-frontend-test.onrender.com_staff_md_size.png)
+<p align="center">
+  <img src="./public/agnos-frontend-test.onrender.com_%20md_size.png" alt="Agnos Landing Mobile" width="240" />
+  <img src="./public/agnos-frontend-test.onrender.com_patient_md_size.png" alt="Agnos Patient Mobile" width="240" />
+  <img src="./public/agnos-frontend-test.onrender.com_staff_md_size.png" alt="Agnos Staff Mobile" width="240" />
+</p>
 
 ## Tech Stack
 
