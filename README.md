@@ -2,6 +2,34 @@
 
 Realtime patient intake form with a synchronized staff monitoring dashboard.
 
+## ภาษาไทย (สรุปอ่านง่าย)
+
+โปรเจกต์นี้คือระบบฟอร์มคนไข้ที่เชื่อมกับหน้าจอเจ้าหน้าที่แบบเรียลไทม์
+
+- ฝั่งคนไข้ (`/patient`)
+  - กรอกข้อมูลประวัติคนไข้ได้ครบ
+  - มี validation ตรวจข้อมูลด้วย Zod
+  - ไม่โชว์ error สีแดงทันทีตอนเปิดหน้า
+  - จะโชว์ error เมื่อผู้ใช้แตะ/ออกจากช่องนั้น หรือกด Submit
+- ฝั่งเจ้าหน้าที่ (`/staff`)
+  - เห็นข้อมูลที่คนไข้กำลังกรอกแบบเรียลไทม์
+  - เห็นสถานะ `Idle`, `Filling form`, `Submitted`
+- Realtime
+  - ใช้ Socket.IO ผ่าน custom server (`server.js`)
+  - `patient:update` ส่งเฉพาะห้อง `staff`
+
+### วิธีรันแบบสั้นๆ
+
+```bash
+npm install
+npm run dev
+```
+
+เปิดใช้งานที่:
+
+- `http://localhost:3000/patient`
+- `http://localhost:3000/staff`
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
@@ -72,21 +100,20 @@ npm run lint
 
 This project uses a custom `server.js` for Next.js + Socket.IO.
 
-### Recommended platforms
+### Free Deploy (Render) — Quick Start
 
-1. **Render / Railway / Heroku** (recommended for persistent Node server)
-2. **Vercel** (requires separate realtime backend strategy; raw Socket.IO server in same process is not ideal on serverless)
-
-### Example production command
-
-```bash
-npm run build
-npm run start
-```
+1. Push this project to GitHub.
+2. In Render, create a **Web Service** from your repository.
+3. Set service config:
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start`
+   - Environment: `NODE_VERSION=20`, `NODE_ENV=production`
+4. Deploy and open:
+   - `/patient` for patient form
+   - `/staff` for realtime staff dashboard
 
 ## Deliverables Checklist
 
-- [ ] Repository URL: `PASTE_YOUR_REPO_URL`
+- [ ] Repository URL: `https://github.com/yongyut-wil/agnos-frontend-test`
 - [ ] Live URL: `https://agnos-frontend-test.onrender.com/`
 - [x] README with setup + feature details
-- [x] Development planning document at `docs/development-plan.md`
