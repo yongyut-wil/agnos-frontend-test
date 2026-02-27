@@ -87,6 +87,6 @@ npm run start
 ## Deliverables Checklist
 
 - [ ] Repository URL: `PASTE_YOUR_REPO_URL`
-- [ ] Live URL: `PASTE_YOUR_DEPLOYED_URL`
+- [ ] Live URL: `https://agnos-frontend-test.onrender.com/`
 - [x] README with setup + feature details
 - [x] Development planning document at `docs/development-plan.md`
