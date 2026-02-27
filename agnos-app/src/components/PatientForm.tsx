@@ -210,6 +210,13 @@ export default function PatientForm() {
   const handleGenderSelect = (gender: string) => {
     setFormData((prev) => ({ ...prev, gender }));
     setTouchedFields((prev) => ({ ...prev, gender: true }));
+    setErrors((prev) => {
+      if (!prev.gender) return prev;
+
+      const rest = { ...prev };
+      delete rest.gender;
+      return rest;
+    });
     setActivityTick((prev) => prev + 1);
     if (formStatus === "submitted") {
       setFormStatus("typing");
